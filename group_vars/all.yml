@@ -1,0 +1,32 @@
+---
+# WordPress database settings for the Agile611 lab.
+wp_db_name: wordpress
+wp_db_user: wp_user
+wp_db_password: wp_password
+wp_db_host: "10.11.12.20"
+wp_db_user_host: "%"
+
+# WordPress download and filesystem settings.
+wp_version_url: "https://wordpress.org/latest.tar.gz"
+wp_document_root: "/var/www/wordpress"
+wp_owner: "www-data"
+wp_group: "www-data"
+
+# Apache settings.
+apache_site_name: "wordpress.conf"
+apache_listen_port: 80
+
+# Optional Nginx load balancer settings.
+nginx_frontend_port: 80
+nginx_backend_port: 80
+
+# Lab-only WordPress salts. For real environments, replace these with output from:
+# https://api.wordpress.org/secret-key/1.1/salt/
+wp_auth_key: "put-your-unique-phrase-here-auth-key"
+wp_secure_auth_key: "put-your-unique-phrase-here-secure-auth-key"
+wp_logged_in_key: "put-your-unique-phrase-here-logged-in-key"
+wp_nonce_key: "put-your-unique-phrase-here-nonce-key"
+wp_auth_salt: "put-your-unique-phrase-here-auth-salt"
+wp_secure_auth_salt: "put-your-unique-phrase-here-secure-auth-salt"
+wp_logged_in_salt: "put-your-unique-phrase-here-logged-in-salt"
+wp_nonce_salt: "put-your-unique-phrase-here-nonce-salt"

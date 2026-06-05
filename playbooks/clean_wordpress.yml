@@ -1,0 +1,61 @@
+---
+- name: Clean WordPress files from the webserver
+  hosts: webserver
+  become: true
+  tasks:
+    - name: Disable WordPress Apache site
+      ansible.builtin.file:
+        path: "/etc/apache2/sites-enabled/{{ apache_site_name }}"
+        state: absent
+
+    - name: Remove WordPress Apache site definition
+      ansible.builtin.file:
+        path: "/etc/apache2/sites-available/{{ apache_site_name }}"
+        state: absent
+
+    - name: Remove WordPress document root
+      ansible.builtin.file:
+        path: "{{ wp_document_root }}"
+        state: absent
+
+    - name: Restart Apache
+      ansible.builtin.service:
+        name: apache2
+        state: restarted
+
+- name: Clean WordPress database and user
+  hosts: database
+  become: true
+  tasks:
+    - name: Remove WordPress database
+      ansible.mysql.mysql_db:
+        name: "{{ wp_db_name }}"
+        state: absent
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+    - name: Remove WordPress database user
+      ansible.mysql.mysql_user:
+        name: "{{ wp_db_user }}"
+        host: "{{ wp_db_user_host }}"
+        state: absent
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: Clean optional Nginx load balancer configuration
+  hosts: loadbalancer
+  become: true
+  tasks:
+    - name: Disable WordPress Nginx site
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/wordpress
+        state: absent
+
+    - name: Remove WordPress Nginx site definition
+      ansible.builtin.file:
+        path: /etc/nginx/sites-available/wordpress
+        state: absent
+
+    - name: Restart Nginx if installed
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+      ignore_errors: true

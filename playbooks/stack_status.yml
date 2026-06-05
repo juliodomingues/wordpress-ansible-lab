@@ -1,0 +1,46 @@
+---
+- name: Validate database service
+  hosts: database
+  become: true
+  tasks:
+    - name: Gather service facts from database node
+      ansible.builtin.service_facts:
+
+    - name: Show MySQL service state
+      ansible.builtin.debug:
+        msg: "MySQL service state: {{ ansible_facts.services['mysql.service'].state | default('unknown') }}"
+
+- name: Validate webserver service
+  hosts: webserver
+  become: true
+  tasks:
+    - name: Gather service facts from webserver node
+      ansible.builtin.service_facts:
+
+    - name: Show Apache service state
+      ansible.builtin.debug:
+        msg: "Apache service state: {{ ansible_facts.services['apache2.service'].state | default('unknown') }}"
+
+- name: Validate HTTP endpoints from the control node
+  hosts: control
+  tasks:
+    - name: Verify direct WordPress endpoint
+      ansible.builtin.uri:
+        url: "http://10.11.12.40/"
+        status_code: [200, 302]
+      register: wordpress_direct
+
+    - name: Show direct endpoint status
+      ansible.builtin.debug:
+        msg: "Direct webserver HTTP status: {{ wordpress_direct.status }}"
+
+    - name: Verify load balancer endpoint
+      ansible.builtin.uri:
+        url: "http://10.11.12.30/"
+        status_code: [200, 302]
+      register: wordpress_lb
+      ignore_errors: true
+
+    - name: Show load balancer endpoint status
+      ansible.builtin.debug:
+        msg: "Load balancer HTTP status: {{ wordpress_lb.status | default('not available') }}"

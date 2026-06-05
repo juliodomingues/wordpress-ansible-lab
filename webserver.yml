@@ -1,0 +1,108 @@
+---
+- name: Configure Apache, PHP, and WordPress
+  hosts: webserver
+  become: true
+  tasks:
+    - name: Install Apache, PHP, and WordPress dependencies
+      ansible.builtin.apt:
+        name:
+          - apache2
+          - php
+          - php-mysql
+          - php-curl
+          - php-gd
+          - php-mbstring
+          - php-xml
+          - php-soap
+          - php-intl
+          - php-zip
+          - unzip
+          - tar
+        state: present
+        update_cache: true
+
+    - name: Ensure Apache is started and enabled
+      ansible.builtin.service:
+        name: apache2
+        state: started
+        enabled: true
+
+    - name: Enable Apache rewrite module
+      community.general.apache2_module:
+        name: rewrite
+        state: present
+      notify: Restart Apache
+
+    - name: Create WordPress document root
+      ansible.builtin.file:
+        path: "{{ wp_document_root }}"
+        state: directory
+        owner: "{{ wp_owner }}"
+        group: "{{ wp_group }}"
+        mode: '0755'
+
+    - name: Download WordPress archive
+      ansible.builtin.get_url:
+        url: "{{ wp_version_url }}"
+        dest: /tmp/wordpress-latest.tar.gz
+        mode: '0644'
+
+    - name: Extract WordPress archive into /tmp
+      ansible.builtin.unarchive:
+        src: /tmp/wordpress-latest.tar.gz
+        dest: /tmp
+        remote_src: true
+        creates: /tmp/wordpress/wp-settings.php
+
+    - name: Copy WordPress files to document root
+      ansible.builtin.copy:
+        src: /tmp/wordpress/
+        dest: "{{ wp_document_root }}/"
+        owner: "{{ wp_owner }}"
+        group: "{{ wp_group }}"
+        mode: preserve
+        remote_src: true
+      notify: Restart Apache
+
+    - name: Ensure WordPress document root ownership
+      ansible.builtin.file:
+        path: "{{ wp_document_root }}"
+        state: directory
+        owner: "{{ wp_owner }}"
+        group: "{{ wp_group }}"
+        recurse: true
+
+    - name: Deploy WordPress configuration
+      ansible.builtin.template:
+        src: templates/wp-config.php.j2
+        dest: "{{ wp_document_root }}/wp-config.php"
+        owner: "{{ wp_owner }}"
+        group: "{{ wp_group }}"
+        mode: '0640'
+      notify: Restart Apache
+
+    - name: Deploy Apache virtual host
+      ansible.builtin.template:
+        src: templates/wordpress.conf.j2
+        dest: "/etc/apache2/sites-available/{{ apache_site_name }}"
+        mode: '0644'
+      notify: Restart Apache
+
+    - name: Disable default Apache site
+      ansible.builtin.file:
+        path: /etc/apache2/sites-enabled/000-default.conf
+        state: absent
+      notify: Restart Apache
+
+    - name: Enable WordPress Apache site
+      ansible.builtin.file:
+        src: "/etc/apache2/sites-available/{{ apache_site_name }}"
+        dest: "/etc/apache2/sites-enabled/{{ apache_site_name }}"
+        state: link
+      notify: Restart Apache
+
+  handlers:
+    - name: Restart Apache
+      ansible.builtin.service:
+        name: apache2
+        state: restarted

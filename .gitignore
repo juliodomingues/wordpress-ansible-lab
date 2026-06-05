@@ -1,0 +1,5 @@
+*.retry
+.cache/
+.ssh/
+.vagrant/
+.DS_Store

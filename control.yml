@@ -1,0 +1,11 @@
+---
+- name: Prepare the Ansible control node
+  hosts: control
+  become: true
+  tasks:
+    - name: Install control-node tools
+      ansible.builtin.apt:
+        name:
+          - curl
+        state: present
+        update_cache: true
