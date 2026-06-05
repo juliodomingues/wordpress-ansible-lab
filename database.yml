@@ -23,6 +23,7 @@
           - ca-certificates
           - gnupg
           - curl
+          - debconf-utils
           - python3-pymysql
         state: present
         update_cache: true
