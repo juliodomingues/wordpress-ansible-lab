@@ -25,7 +25,7 @@ The lab uses the same four-node topology as the base training environment: an An
 
 This exercise is intended to run inside the Docker lab from [`agile611/startusingansible`](https://github.com/agile611/startusingansible). Run the infrastructure commands from your host machine, not from inside the Ansible container.
 
-The database playbook keeps the original exercise goal of using **MySQL**. Because the Agile611 container image is based on Debian Trixie and may not expose `mysql-server` in the default APT repositories, `database.yml` adds Oracle’s official MySQL APT repository on the database node before installing `mysql-server`. In this disposable classroom lab, that repository is added with `trusted=yes` because Oracle’s published APT signing key currently triggers an expired-key validation failure in this environment. Do not use `trusted=yes` in production.
+The database playbook keeps the original exercise goal of using **MySQL**. Because the Agile611 container image is based on Debian Trixie and may not expose `mysql-server` in the default APT repositories, `database.yml` adds Oracle’s official MySQL APT repository on the database node before installing `mysql-server`. In this disposable classroom lab, that repository is added with `trusted=yes` because Oracle’s published APT signing key currently triggers an expired-key validation failure in this environment. Do not use `trusted=yes` in production. The playbook also installs the Debian Bookworm `libaio1` compatibility package because Oracle MySQL 8.4 depends on `libaio1`, while the Debian Trixie lab image does not provide that package name by default.
 
 | Command location | Meaning |
 |---|---|
@@ -177,6 +177,7 @@ sleep 3
 |---|---|---|
 | `No package matching mysql-server is available` | The base Debian Trixie lab image does not provide Oracle MySQL in its default repositories | Pull the latest repository version; `database.yml` adds Oracle’s official MySQL APT repository before installing `mysql-server`. |
 | `OpenPGP signature verification failed` for `repo.mysql.com` | Oracle’s MySQL APT signing key currently appears expired to the lab image | Pull the latest repository version; `database.yml` removes the old signed source definition and re-adds the MySQL repository in lab-only `trusted=yes` mode. |
+| `mysql-community-server-core Depends libaio1 but it is not installable` | Oracle MySQL 8.4 Debian packages require `libaio1`, which is not available by default in the Debian Trixie lab image | Pull the latest repository version; `database.yml` now downloads and installs the Debian Bookworm `libaio1` compatibility package before `mysql-server`. |
 | Ansible returns `UNREACHABLE` | SSH keys are missing or containers are not running | Run `docker compose ps` and `./setup-ssh.sh` from the host inside `startusingansible`. |
 | Database modules fail | The MySQL Python connector, official MySQL APT repository, or Ansible collection is missing | Re-run `ansible-galaxy collection install -r collections/requirements.yml` and `database.yml`. |
 | WordPress cannot connect to database | Wrong database host, user, password, or MySQL bind address | Check `group_vars/all.yml` and re-run `database.yml`. |
