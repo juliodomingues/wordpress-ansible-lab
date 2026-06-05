@@ -3,13 +3,15 @@
   hosts: database
   become: true
   vars:
-    mysql_apt_key_url: "https://repo.mysql.com/RPM-GPG-KEY-mysql-2023"
-    mysql_apt_key_path: "/etc/apt/trusted.gpg.d/mysql.asc"
     # The Agile611 image is based on Debian Trixie, while Oracle's MySQL APT
     # repository currently publishes Debian Bookworm packages. The Bookworm
     # repository is used here deliberately so the exercise installs true MySQL
     # instead of Debian's MariaDB-compatible default packages.
-    mysql_apt_repository: "deb [signed-by=/etc/apt/trusted.gpg.d/mysql.asc] http://repo.mysql.com/apt/debian/ bookworm mysql-8.4-lts"
+    # Oracle MySQL repository key currently causes an expired-key failure in
+    # this Debian Trixie lab. For this disposable classroom lab only, the
+    # repository is marked trusted so the original MySQL exercise remains
+    # executable. Do not use this trusted=yes approach in production.
+    mysql_apt_repository: "deb [trusted=yes] http://repo.mysql.com/apt/debian/ bookworm mysql-8.4-lts"
   tasks:
     - name: Install prerequisites for the official MySQL APT repository
       ansible.builtin.apt:
@@ -38,18 +40,20 @@
         autoremove: true
       failed_when: false
 
-    - name: Add official MySQL APT signing key
-      ansible.builtin.get_url:
-        url: "{{ mysql_apt_key_url }}"
-        dest: "{{ mysql_apt_key_path }}"
-        mode: '0644'
-        force: true
+    - name: Remove previous signed MySQL APT repository definition if present
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/mysql-community.list
+        state: absent
 
-    - name: Add official MySQL APT repository
+    - name: Add official MySQL APT repository for this lab
       ansible.builtin.apt_repository:
         repo: "{{ mysql_apt_repository }}"
         filename: mysql-community
         state: present
+        update_cache: false
+
+    - name: Update APT cache after adding MySQL repository
+      ansible.builtin.apt:
         update_cache: true
 
     - name: Preseed MySQL root password prompt with an empty lab password
