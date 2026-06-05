@@ -6,9 +6,9 @@
     - name: Gather service facts from database node
       ansible.builtin.service_facts:
 
-    - name: Show MySQL service state
+    - name: Show MariaDB service state
       ansible.builtin.debug:
-        msg: "MySQL service state: {{ ansible_facts.services['mysql.service'].state | default('unknown') }}"
+        msg: "MariaDB service state: {{ ansible_facts.services['mariadb.service'].state | default(ansible_facts.services['mysql.service'].state | default('unknown')) }}"
 
 - name: Validate webserver service
   hosts: webserver

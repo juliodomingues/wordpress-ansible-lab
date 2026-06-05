@@ -6,24 +6,24 @@
     - name: Install database packages
       ansible.builtin.apt:
         name:
-          - mysql-server
+          - mariadb-server
           - python3-pymysql
         state: present
         update_cache: true
 
-    - name: Ensure MySQL is started and enabled
+    - name: Ensure MariaDB is started and enabled
       ansible.builtin.service:
-        name: mysql
+        name: mariadb
         state: started
         enabled: true
 
-    - name: Allow MySQL to listen on all interfaces
+    - name: Allow MariaDB to listen on all interfaces
       ansible.builtin.lineinfile:
-        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        path: /etc/mysql/mariadb.conf.d/50-server.cnf
         regexp: '^bind-address'
         line: 'bind-address = 0.0.0.0'
         backup: true
-      notify: Restart MySQL
+      notify: Restart MariaDB
 
     - name: Create WordPress database
       ansible.mysql.mysql_db:
@@ -41,7 +41,7 @@
         login_unix_socket: /var/run/mysqld/mysqld.sock
 
   handlers:
-    - name: Restart MySQL
+    - name: Restart MariaDB
       ansible.builtin.service:
-        name: mysql
+        name: mariadb
         state: restarted
