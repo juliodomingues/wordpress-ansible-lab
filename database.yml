@@ -1,29 +1,90 @@
 ---
-- name: Configure database server for WordPress
+- name: Configure MySQL database server for WordPress
   hosts: database
   become: true
+  vars:
+    mysql_apt_key_url: "https://repo.mysql.com/RPM-GPG-KEY-mysql-2023"
+    mysql_apt_key_path: "/etc/apt/trusted.gpg.d/mysql.asc"
+    # The Agile611 image is based on Debian Trixie, while Oracle's MySQL APT
+    # repository currently publishes Debian Bookworm packages. The Bookworm
+    # repository is used here deliberately so the exercise installs true MySQL
+    # instead of Debian's MariaDB-compatible default packages.
+    mysql_apt_repository: "deb [signed-by=/etc/apt/trusted.gpg.d/mysql.asc] http://repo.mysql.com/apt/debian/ bookworm mysql-8.4-lts"
   tasks:
-    - name: Install database packages
+    - name: Install prerequisites for the official MySQL APT repository
       ansible.builtin.apt:
         name:
-          - mariadb-server
+          - ca-certificates
+          - gnupg
+          - curl
           - python3-pymysql
         state: present
         update_cache: true
 
-    - name: Ensure MariaDB is started and enabled
+    - name: Stop MariaDB if it exists from a previous lab attempt
       ansible.builtin.service:
         name: mariadb
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Remove MariaDB server packages if installed from a previous lab attempt
+      ansible.builtin.apt:
+        name:
+          - mariadb-server
+          - mariadb-client
+        state: absent
+        purge: true
+        autoremove: true
+      failed_when: false
+
+    - name: Add official MySQL APT signing key
+      ansible.builtin.get_url:
+        url: "{{ mysql_apt_key_url }}"
+        dest: "{{ mysql_apt_key_path }}"
+        mode: '0644'
+        force: true
+
+    - name: Add official MySQL APT repository
+      ansible.builtin.apt_repository:
+        repo: "{{ mysql_apt_repository }}"
+        filename: mysql-community
+        state: present
+        update_cache: true
+
+    - name: Preseed MySQL root password prompt with an empty lab password
+      ansible.builtin.debconf:
+        name: mysql-community-server
+        question: "{{ item }}"
+        value: ""
+        vtype: password
+      loop:
+        - mysql-community-server/root-pass
+        - mysql-community-server/re-root-pass
+
+    - name: Install Oracle MySQL server packages
+      ansible.builtin.apt:
+        name:
+          - mysql-server
+          - python3-pymysql
+        state: present
+        update_cache: true
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: Ensure MySQL is started and enabled
+      ansible.builtin.service:
+        name: mysql
         state: started
         enabled: true
 
-    - name: Allow MariaDB to listen on all interfaces
+    - name: Allow MySQL to listen on all interfaces
       ansible.builtin.lineinfile:
-        path: /etc/mysql/mariadb.conf.d/50-server.cnf
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
         regexp: '^bind-address'
         line: 'bind-address = 0.0.0.0'
         backup: true
-      notify: Restart MariaDB
+      notify: Restart MySQL
 
     - name: Create WordPress database
       ansible.mysql.mysql_db:
@@ -41,7 +102,7 @@
         login_unix_socket: /var/run/mysqld/mysqld.sock
 
   handlers:
-    - name: Restart MariaDB
+    - name: Restart MySQL
       ansible.builtin.service:
-        name: mariadb
+        name: mysql
         state: restarted

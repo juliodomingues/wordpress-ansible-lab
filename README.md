@@ -2,7 +2,7 @@
 
 This repository contains a complete Ansible exercise for deploying WordPress in the Agile611 `startusingansible` laboratory. It is designed so that a student can pull this repository into the lab workspace and execute the deployment with Ansible.
 
-The lab uses the same four-node topology as the base training environment: an Ansible control node, a database node, a webserver node, and an optional load balancer node. The exercise deploys MariaDB, Apache, PHP, WordPress, and optionally Nginx as a reverse proxy.
+The lab uses the same four-node topology as the base training environment: an Ansible control node, a database node, a webserver node, and an optional load balancer node. The exercise deploys MySQL, Apache, PHP, WordPress, and optionally Nginx as a reverse proxy.
 
 ## 1. Repository contents
 
@@ -13,7 +13,7 @@ The lab uses the same four-node topology as the base training environment: an An
 | `collections/requirements.yml` | Required Ansible collections. |
 | `group_vars/all.yml` | Shared WordPress, database, Apache, and Nginx variables. |
 | `control.yml` | Installs control-node tools. |
-| `database.yml` | Installs MariaDB and creates the WordPress database and user. |
+| `database.yml` | Installs Oracle MySQL from the official MySQL APT repository and creates the WordPress database and user. |
 | `webserver.yml` | Installs Apache/PHP, downloads WordPress, and configures the site. |
 | `loadbalancer.yml` | Installs and configures Nginx as an optional load balancer. |
 | `site.yml` | Main playbook that runs the complete deployment in order. |
@@ -25,6 +25,8 @@ The lab uses the same four-node topology as the base training environment: an An
 
 This exercise is intended to run inside the Docker lab from [`agile611/startusingansible`](https://github.com/agile611/startusingansible). Run the infrastructure commands from your host machine, not from inside the Ansible container.
 
+The database playbook keeps the original exercise goal of using **MySQL**. Because the Agile611 container image is based on Debian Trixie and may not expose `mysql-server` in the default APT repositories, `database.yml` adds Oracle’s official MySQL APT repository on the database node before installing `mysql-server`.
+
 | Command location | Meaning |
 |---|---|
 | **Host machine** | Your laptop or workstation where Docker is installed. |
@@ -35,7 +37,7 @@ The expected lab network is shown below.
 | Node | IP address | Role |
 |---|---:|---|
 | `ansible` | `10.11.12.10` | Control node |
-| `database` | `10.11.12.20` | MariaDB database |
+| `database` | `10.11.12.20` | MySQL database |
 | `loadbalancer` | `10.11.12.30` | Optional Nginx load balancer |
 | `webserver` | `10.11.12.40` | Apache, PHP, and WordPress |
 
@@ -110,7 +112,7 @@ Run these commands inside the **control node**, from `/home/vagrant/workspace/wo
 # 1. Prepare the Ansible control node.
 ansible-playbook -i hosts -u vagrant control.yml
 
-# 2. Configure MariaDB and create the WordPress database and user.
+# 2. Configure MySQL and create the WordPress database and user.
 ansible-playbook -i hosts -u vagrant database.yml
 
 # 3. Configure Apache, PHP, WordPress files, and wp-config.php.
@@ -173,21 +175,21 @@ sleep 3
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `No package matching mysql-server is available` | Older versions of this lab used `mysql-server`, which is not available in some lab images | Pull the latest repository version; this exercise now installs `mariadb-server`. |
+| `No package matching mysql-server is available` | The base Debian Trixie lab image does not provide Oracle MySQL in its default repositories | Pull the latest repository version; `database.yml` now adds Oracle’s official MySQL APT repository before installing `mysql-server`. |
 | Ansible returns `UNREACHABLE` | SSH keys are missing or containers are not running | Run `docker compose ps` and `./setup-ssh.sh` from the host inside `startusingansible`. |
-| Database modules fail | The MariaDB/MySQL Python connector or Ansible collection is missing | Re-run `ansible-galaxy collection install -r collections/requirements.yml` and `database.yml`. |
-| WordPress cannot connect to database | Wrong database host, user, password, or MariaDB bind address | Check `group_vars/all.yml` and re-run `database.yml`. |
+| Database modules fail | The MySQL Python connector, official MySQL APT repository, or Ansible collection is missing | Re-run `ansible-galaxy collection install -r collections/requirements.yml` and `database.yml`. |
+| WordPress cannot connect to database | Wrong database host, user, password, or MySQL bind address | Check `group_vars/all.yml` and re-run `database.yml`. |
 | Apache shows the default page | The WordPress VirtualHost is not enabled | Re-run `webserver.yml` and inspect `/etc/apache2/sites-enabled/`. |
 | Nginx returns `502 Bad Gateway` | Webserver is down or upstream is wrong | Re-run `webserver.yml`, then `loadbalancer.yml`. |
 
 ## 12. Learning objectives
 
-By completing this lab, students practise inventory management, package installation, service management, MariaDB/MySQL automation, Jinja2 templates, handlers, deployment orchestration with `site.yml`, validation playbooks, and cleanup playbooks.
+By completing this lab, students practise inventory management, package installation, service management, MySQL automation, Jinja2 templates, handlers, deployment orchestration with `site.yml`, validation playbooks, and cleanup playbooks.
 
 ## References
 
 [Ansible `apt` module](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/apt_module.html)  
 [Ansible `template` module](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/template_module.html)  
-[Ansible MySQL/MariaDB collection](https://docs.ansible.com/projects/ansible/latest/collections/ansible/mysql/index.html)  
+[Ansible MySQL collection](https://docs.ansible.com/projects/ansible/latest/collections/ansible/mysql/index.html)  
 [WordPress server requirements](https://developer.wordpress.org/advanced-administration/server/requirements/)  
 [Agile611 startusingansible](https://github.com/agile611/startusingansible)
