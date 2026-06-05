@@ -162,6 +162,23 @@ Run this command inside the **control node**, from `/home/vagrant/workspace/word
 ansible-playbook -i hosts -u vagrant playbooks/clean_wordpress.yml
 ```
 
+The cleanup playbook removes the WordPress Apache site, removes `/var/www/wordpress`, drops the WordPress database, drops the WordPress database user, and removes the optional Nginx site. The database cleanup intentionally uses the MySQL command-line client instead of the `ansible.mysql` collection, so cleanup can still run even when collections are not installed correctly.
+
+### Manual cleanup fallback
+
+If the cleanup playbook is not available, run these commands from the **host machine**. They execute directly inside the Docker containers.
+
+```bash
+# Remove WordPress files and Apache site from the webserver container
+docker exec webserver bash -lc 'rm -rf /var/www/wordpress /etc/apache2/sites-enabled/wordpress.conf /etc/apache2/sites-available/wordpress.conf && systemctl restart apache2 || true'
+
+# Drop WordPress database and user from the database container
+docker exec database bash -lc "mysql --protocol=socket -uroot -S /var/run/mysqld/mysqld.sock -e \"DROP DATABASE IF EXISTS wordpress; DROP USER IF EXISTS 'wp_user'@'%'; FLUSH PRIVILEGES;\""
+
+# Remove optional Nginx site from the load balancer container
+docker exec loadbalancer bash -lc 'rm -f /etc/nginx/sites-enabled/wordpress /etc/nginx/sites-available/wordpress && systemctl restart nginx || true'
+```
+
 If you want to fully reset the containers, run these commands on the **host machine**, from inside the `startusingansible` directory.
 
 ```bash

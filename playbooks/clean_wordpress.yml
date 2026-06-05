@@ -27,18 +27,29 @@
   hosts: database
   become: true
   tasks:
-    - name: Remove WordPress database
-      ansible.mysql.mysql_db:
-        name: "{{ wp_db_name }}"
-        state: absent
-        login_unix_socket: /var/run/mysqld/mysqld.sock
+    - name: Remove WordPress database using MySQL CLI
+      ansible.builtin.command:
+        argv:
+          - mysql
+          - --protocol=socket
+          - -uroot
+          - -S
+          - /var/run/mysqld/mysqld.sock
+          - -e
+          - "DROP DATABASE IF EXISTS `{{ wp_db_name }}`;"
+      changed_when: true
 
-    - name: Remove WordPress database user
-      ansible.mysql.mysql_user:
-        name: "{{ wp_db_user }}"
-        host: "{{ wp_db_user_host }}"
-        state: absent
-        login_unix_socket: /var/run/mysqld/mysqld.sock
+    - name: Remove WordPress database user using MySQL CLI
+      ansible.builtin.command:
+        argv:
+          - mysql
+          - --protocol=socket
+          - -uroot
+          - -S
+          - /var/run/mysqld/mysqld.sock
+          - -e
+          - "DROP USER IF EXISTS '{{ wp_db_user }}'@'{{ wp_db_user_host }}'; FLUSH PRIVILEGES;"
+      changed_when: true
 
 - name: Clean optional Nginx load balancer configuration
   hosts: loadbalancer
